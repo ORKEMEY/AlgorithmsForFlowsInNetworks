@@ -29,7 +29,7 @@ FILE* open_file(str Path, const char* mode) { // відкрити файл
 
 	FILE* file; // показчик на файл
 	// відчинення файлу
-	if (fopen_s(&file, Path, mode) != NULL) { // якщо файл не відкритій
+	if (fopen_s(&file, Path, mode) != 0) { // якщо файл не відкритій
 		cout << " < ERROR! This File can not be open, or doesn't exist > " << endl; // вівід повідомлення про помилку
 		system("pause");
 		exit(0); // зачинення програми
@@ -38,60 +38,78 @@ FILE* open_file(str Path, const char* mode) { // відкрити файл
 	return file; // певернути показчик на файл
 }
 
-edge* read_file(str Path, int* edges, int *nodes, int* start, int* finish) { // зчитуфання графу з файлу
+edge* read_file(str Path, meta* meta_data) { // зчитуфання графу з файлу
 
 	FILE* file = open_file(Path, "r"); // відчинення файлу
-	int start_node, finish_node, weight, price;
+	edge* cur_edge = new edge();
 
-	fscanf_s(file, "%d %d %d %d", nodes, edges, start, finish);
+	fscanf_s(file, "%d %d %d %d", &(meta_data->num_of_nodes), &(meta_data->num_of_edges), &(meta_data->start_node), &(meta_data->finish_node));
 	if (feof(file)) {
-
 		cout << " < File is incorrectly filled > " << endl;
 		system("pause");
 		return NULL;
 	}
 
-	if (2 >= *nodes || *nodes >= 100) { // перевірка на коректність введених даних
+	if(check_meta(*meta_data)) return NULL;
 
-		cout << " < Error! Number of nodes must be (2 < nodes < 100) > " << endl;
-		return NULL;
-	}
-	if (*nodes - 1 >= *edges || *edges >= 200) { // перевірка на коректність введених даних
+	edge* Edge_List = new edge[meta_data->num_of_edges]; // виділення пам'яті під масив ребер
 
-		cout << " < Error! Number of edges must be (nodes - 1 < edges < 200) > " << endl;
-		return NULL;
-	}
+	for (int count = 0; count < meta_data->num_of_edges; count++) { // поки не заповнений весь масив ребер
 
-	edge* Edge_List = new edge[*edges]; // виділення пам'яті під масив ребер
-
-	for (int count = 0; count < *edges; count++) { // поки не заповнений весь масив ребер
-
-		fscanf_s(file, "%d %d %d %d", &start_node, &finish_node, &weight, &price);
+		fscanf_s(file, "%d %d %d %d", &(cur_edge->start_node), &(cur_edge->finish_node), &(cur_edge->weight), &(cur_edge->price));
 
 		if (feof(file)) break; // перевірка на кінець файлу
 
-		// перевірка на коректність введених даних
-		if (start_node <= 0 || start_node > *nodes || finish_node <= 0 || finish_node > *nodes) { // перевірка на коректність зчитаних даних
-			cout << " < Error! Nunber of nodes cann't be less then null and bigger then number of all nodes > " << endl;
-			system("pause");
-			return NULL;
-		}
-		// перевірка на коректність введених даних
-		if (weight < 0 || price < 0) {
+		if (check_edge(*meta_data, *cur_edge)) return NULL;
 
-			cout << " < Error! Distance or price between two nodes cann't be less then null > " << endl;
-			system("pause");
-			return NULL;
-		}
-
-		(Edge_List + count)->start_node = start_node; // запис стартової вершини ребра
-		(Edge_List + count)->finish_node = finish_node; // запис фінішної вершини ребера
-		(Edge_List + count)->weight = weight; // запис ваги ребра
-		(Edge_List + count)->price = price; // запис вартості проходу по ребру
+		*(Edge_List + count) = *cur_edge;
 	}
 
 	fclose(file); // зачинення файлу
 	return Edge_List; // повернути список ребер
+}
+
+bool check_edge(meta meta_data, edge edge) {
+
+	// перевірка на коректність введених даних
+	if (edge.start_node <= 0 || edge.start_node > meta_data.num_of_nodes || edge.finish_node <= 0 || edge.finish_node > meta_data.num_of_nodes) { // перевірка на коректність зчитаних даних
+		cout << " < Error! Number of node cann't be less then null and bigger then number of all nodes > " << endl;
+		system("pause");
+		return true;
+	}
+	else if (edge.weight < 0 || edge.price < 0) {
+
+		cout << " < Error! Distance or price between two nodes cann't be less then null > " << endl;
+		system("pause");
+		return true;
+	}
+	return false;
+}
+
+bool check_meta(meta meta_data) {
+
+	if (2 >= meta_data.num_of_nodes || meta_data.num_of_nodes >= 100) { // перевірка на коректність введених даних
+
+		cout << " < Error! Number of nodes must be (2 < nodes < 100) > " << endl;
+		return true;
+	}else if (meta_data.num_of_nodes - 1 >= meta_data.num_of_edges || meta_data.num_of_edges >= 200) { // перевірка на коректність введених даних
+
+		cout << " < Error! Number of edges must be (nodes - 1 < edges < 200) > " << endl;
+		return true;
+	}
+	else if (meta_data.start_node > meta_data.num_of_nodes || meta_data.start_node <= 0 || meta_data.finish_node <= 0 || meta_data.finish_node > meta_data.num_of_nodes) { // перевірка на коректність введених даних
+
+		cout << " < Error! Number of node cann't be less then null and bigger then number of all nodes > " << endl;
+		return true;
+	}
+	return false;
+}
+
+void connect_file(edge** Edge_List, str* Path, meta* meta_data) {
+	delete[] * Edge_List; // видалення  списка ребер
+	get_path(Path); // введення шляху до файлу
+	*Edge_List = read_file(*Path, meta_data); // зчитування з файлу
+	edge_list_output(*Edge_List, meta_data->num_of_edges);  // виведення списка ребер
 }
 
 void edge_list_output(edge* Edge_List, int edges) { // вивести список ребер
@@ -123,9 +141,9 @@ void edge_list_output(edge* Edge_List, int edges) { // вивести список ребер
 	cout << endl;
 }
 
-int** ajacency_matrix(int** Adjacency_Matrix, edge* Edge_List, int edges, int nodes) { // створення матриці суміжності
+int** ajacency_matrix(edge* Edge_List, int edges, int nodes) { // створення матриці суміжності
 
-	Adjacency_Matrix = new int*[nodes]; // виділення пам'яті під матрицю суміжності
+	int** Adjacency_Matrix = new int*[nodes]; // виділення пам'яті під матрицю суміжності
 
 	for (int num_row = 0; num_row < nodes; ++num_row) { // виділення пам'яті під матрицю суміжності
 		*(Adjacency_Matrix + num_row) = new int[nodes];
@@ -165,47 +183,43 @@ void write_answer(FILE* file, std::vector<int>& Path) { // запис відповіді до ви
 
 }
 
-void Edmonds_Karp_algorithm(edge* Edge_List, int nodes, int edges, int start, int finish) { // алгоритм Єдмондса-Карпа
+void Edmonds_Karp_algorithm(edge* Edge_List, meta meta_data) { // алгоритм Єдмондса-Карпа
 
 	str Path; // шлях до вихідного фйлу
 	int cur_flow, max_flow = 0; // поточний та максимальний потік
-	vector<int> cur_Path; // поточний шлях у сіті
-	int** Adjacency_Matrix = NULL; // матриця суміжності
+	vector<int> cur_Path; // поточний шлях у мережі
 	cout << " < Writing to the output file > " << endl;
 	get_path(&Path); // введення шляху до поточного файлу
 
 	FILE* file = open_file(Path, "w+"); // відчинення файлу
 
-	cur_Path = Dijkstras_algorythm(Adjacency_Matrix, Edge_List, nodes, edges, start, finish, &cur_flow, weight); // пошук мінімального шляху між вершинами за допомогою алгоритма Дейкстри
-
-	if (cur_Path.empty()) { // якщо шлях не існує
-
-		cout << " < There is no path between the entered nodes in the current graph > " << endl; // вивести відповідне повідомлення
-		fprintf(file, " < There is no path between the entered nodes in the current graph > \n");
-		fclose(file); // закрити файл
-		return;
-	}
-
-	max_flow += cur_flow; // додати поточний потік до загального
-	get_residual_network(Edge_List, edges, cur_Path, cur_flow); // отримати залишкову мережу
-	printf(" flow / path \n");
+	int count = 0;
 	do {
+		cur_Path = Dijkstras_algorithm(Edge_List, meta_data, &cur_flow, weight); // пошук мінімального шляху між вершинами за допомогою алгоритма Дейкстри
+
+		if (count == 0) {
+			if (cur_Path.empty()) {
+				cout << " < There is no path between the entered nodes in the current graph > " << endl; // вивести відповідне повідомлення
+				fprintf(file, " < There is no path between the entered nodes in the current graph > \n");
+				fclose(file); // закрити файл
+				return;
+			}
+			else printf(" flow / path \n");
+		}
+		else if (cur_Path.empty())break; // якщо шлях більше не існує, вийти із циклу
+
+		max_flow += cur_flow; // додати поточний потік до загального
+		get_residual_network(Edge_List, meta_data.num_of_edges, cur_Path, cur_flow); // отримати залишкову мережу
 
 		fprintf(file, "%d / ", cur_flow); // записати знайдений потік
 		printf("%d / ", cur_flow);
 		write_answer(file, cur_Path); // записати знайдений шлях
+		count++;
+	} while (!cur_Path.empty());
 
-		cur_Path = Dijkstras_algorythm(Adjacency_Matrix, Edge_List, nodes, edges, start, finish, &cur_flow, weight); // пошук мінімального шляху між вершинами за допомогою алгоритма Дейкстри
-		if (cur_Path.empty())break; // якщо шлях більше не існує, вийти із циклу
-		get_residual_network(Edge_List, edges, cur_Path, cur_flow);
-		max_flow += cur_flow;
+	fprintf(file, " < Maximal flow from node \"%d\" to node \"%d\" is  %d / > \n", meta_data.start_node, meta_data.finish_node, max_flow); // записати значення максимального потоку
+	printf(" < Maximal flow from node \"%d\" to node \"%d\" is  %d / > \n", meta_data.start_node, meta_data.finish_node, max_flow);
 
-	} while (!cur_Path.empty()); // поки існує шлях маж заданими вершинами
-
-	fprintf(file, " < Maximal flow from node \"%d\" to node \"%d\" is  %d / > \n", start, finish, max_flow); // записати значення максимального потоку
-	printf(" < Maximal flow from node \"%d\" to node \"%d\" is  %d / > \n", start, finish, max_flow);
-
-	Adjacency_Matrix = del_matrix(Adjacency_Matrix, nodes); // видалення матриці суміжності
 	fclose(file); // закрити файл
 }
 
@@ -235,36 +249,36 @@ int weight(edge*Edge_List, int start, int finish, int edges) { // визначення ваг
 	return 0; // повернути 0
 }
 
-std::vector<int> Dijkstras_algorythm(int** Adjacency_Matrix, edge* Edge_List, int nodes, int edges, int start, int finish, int* min_flow, int(*weight)(edge*, int, int, int)) { // алгоритм Едмондса–Карпа
+std::vector<int> Dijkstras_algorithm(edge* Edge_List, meta meta_data, int* min_flow, int(*weight)(edge*, int, int, int)) { // алгоритм Едмондса–Карпа
 
 	vector<int> Path, Weight, Visited, opened_nodes;
 	queue<int> Queue;
 
-	int cur_node = start - 1, flow;// номер поточної вершини, поточна вершина - стартова, потік у поточному ребрі 
-	*min_flow = INT_MAX;  // мінімальна пропускна здатність на шляху
-	Path.resize(nodes, -1);
-	Weight.resize(nodes, 0);
+	int cur_node = meta_data.start_node - 1;// номер поточної вершини, поточна вершина - стартова,
+
+	Path.resize(meta_data.num_of_nodes, -1);
+	Weight.resize(meta_data.num_of_nodes, 0);
 	Queue.push(cur_node); // записати її в чергу
 
-	Adjacency_Matrix = ajacency_matrix(Adjacency_Matrix, Edge_List, edges, nodes);
+	int** Adjacency_Matrix = ajacency_matrix(Edge_List, meta_data.num_of_edges, meta_data.num_of_nodes); // матриця суміжності
 
 	while (!Queue.empty()) { // поки черга не порожня
 
 		Visited.push_back(cur_node); // поточна вершина відвідана
 
-		for (int column_num = 0; column_num < nodes; ++column_num) { // поки не пройдені усі колонки матриці суміжності
+		for (int column_num = 0; column_num < meta_data.num_of_nodes; ++column_num) { // поки не пройдені усі колонки матриці суміжності
 
 			if (*(*(Adjacency_Matrix + cur_node) + column_num) > 0) { // якщо поточна вершина з'єднана з іншою
 
 				if (!visited(Visited, column_num)) { // перевірити чи не відвідана ця вершини
 
 					opened_nodes.push_back(column_num); // записуємо його у поточний масив відкритих вершин
-					sort(opened_nodes.begin(), opened_nodes.end()); // відсортувати поточний масив відкритих вершин
+					std::sort(opened_nodes.begin(), opened_nodes.end()); // відсортувати поточний масив відкритих вершин
 				}
 
-				if (Weight[column_num] == 0 || Weight[column_num] > weight(Edge_List, cur_node + 1, column_num + 1, edges) + Weight[cur_node]) { // якщо вага шляху до вершини = 0 або більша ніж через поточну вершину
+				if (Weight[column_num] == 0 || Weight[column_num] > weight(Edge_List, cur_node + 1, column_num + 1, meta_data.num_of_edges) + Weight[cur_node]) { // якщо вага шляху до вершини = 0 або більша ніж через поточну вершину
 
-					Weight[column_num] = weight(Edge_List, cur_node + 1, column_num + 1, edges) + Weight[cur_node]; // оновоти інформацію про вагу до вершини
+					Weight[column_num] = weight(Edge_List, cur_node + 1, column_num + 1, meta_data.num_of_edges) + Weight[cur_node]; // оновоти інформацію про вагу до вершини
 
 					Path[column_num] = cur_node; // додати у масив шляху поточну вершину
 				}
@@ -277,17 +291,23 @@ std::vector<int> Dijkstras_algorythm(int** Adjacency_Matrix, edge* Edge_List, in
 		}
 		opened_nodes.clear(); // обнулити масив відкритих вершин
 
-
 		if (!Queue.empty()) Queue.pop();
 		if (!Queue.empty()) cur_node = Queue.front(); // поточна вершина - перша у черзі вершина
-
 	}
 
-	vector<int> Path_uv, Path_vu; // інвертований шлях, шлях між вершинами
-	cur_node = finish - 1; // поточна вершина - кінцева
-	Path_uv.push_back(cur_node + 1); // перша вершина інвертованого шляху - поточна вершина 
+	Adjacency_Matrix = del_matrix(Adjacency_Matrix, meta_data.num_of_nodes);
 
-	while (Path_uv.back() != start) { // поки стартова вершина не поточна 
+	return get_restored_path(Edge_List, Path, meta_data, min_flow); // повернути масив шляху
+}
+
+std::vector<int> get_restored_path(edge* Edge_List, std::vector<int> Path, meta meta_data, int* min_flow) {
+
+	vector<int> Path_uv, Path_vu; // інвертований шлях, шлях між вершинами
+	int cur_node = meta_data.finish_node - 1; // поточна вершина - кінцева
+	Path_uv.push_back(cur_node + 1); // перша вершина інвертованого шляху - поточна вершина 
+	int flow; //потік у поточному ребрі
+	*min_flow = INT_MAX; // мінімальна пропускна здатність на шляху
+	while (Path_uv.back() != meta_data.start_node) { // поки стартова вершина не поточна 
 
 		cur_node = Path[cur_node]; // нова поточна вершина - вешрина у массиву шляху з номером поточної вершини
 		if (cur_node == -1) return Path_vu;
@@ -299,11 +319,10 @@ std::vector<int> Dijkstras_algorythm(int** Adjacency_Matrix, edge* Edge_List, in
 		Path_vu.push_back(Path_uv[count]); // записати її до масиву шляху
 
 		if (count != 0) {
-			flow = weight(Edge_List, Path_vu.back(), Path_uv[count - 1], edges); // визначити потік між вершинами
-			*min_flow > flow ? *min_flow = flow : *min_flow; // якщо він меньший за поточний, то зробити його поточним
+			flow = weight(Edge_List, Path_vu.back(), Path_uv[count - 1], meta_data.num_of_edges); // визначити потік між вершинами
+			if (*min_flow > flow) *min_flow = flow; // якщо він меньший за поточний, то зробити його поточним
 		}
 	}
-
 	return Path_vu; // повернути масив шляху
 }
 
@@ -364,53 +383,46 @@ int get_path_price(edge* Edge_List, std::vector<int>& Path, int edges, int flow)
 	return sum * flow; // помножити вартість на величину потоку
 }
 
-void get_min_price_flow(edge* Edge_List, int nodes, int edges, int start, int finish) {
+void get_min_price_flow(edge* Edge_List, meta meta_data) {
 
 	int cur_price, cur_flow, min_price = 0, max_flow = 0;
 	str Path;
 	vector<int> cur_Path;
-	int** Adjacency_Matrix = NULL; // матриця суміжності
 	cout << " < Writing to the output file > " << endl;
 	get_path(&Path); // введення шляху до поточного файлу
 
 	FILE* file = open_file(Path, "w+"); // відчинення файлу
 
-	cur_Path = Dijkstras_algorythm(Adjacency_Matrix, Edge_List, nodes, edges, start, finish, &cur_price, price); // пошук мінімального шляху за вартыстю між вершинами за допомогою алгоритма Дейкстри
 
-	if (cur_Path.empty()) { // якщо шлях не існує
-
-		cout << " < There is no path between the entered nodes in the current graph > " << endl; // вивести відповідне повідомлення
-		fprintf(file, " < There is no path between the entered nodes in the current graph > \n");
-		fclose(file); // закрити файл
-		return;
-	}
-
-	cur_flow = get_min_flow(Edge_List, cur_Path, edges); // отримати пропускну здатність знайденого шляху
-	cur_price = get_path_price(Edge_List, cur_Path, edges, cur_flow); // знайти вартість проходу по знайденому шляху
-	min_price += cur_price; // підрахувати загальну вартість потоків у мережі
-	max_flow += cur_flow; // підрахувати величину усіх потоків у мережі
-	get_residual_network(Edge_List, edges, cur_Path, cur_flow); // отримати залишкову мережу
-	printf(" flow / price / path \n");
-
+	int count = 0;
 	do {
+		cur_Path = Dijkstras_algorithm(Edge_List, meta_data, &cur_price, price); // пошук мінімального шляху за вартыстю між вершинами за допомогою алгоритма Дейкстри
+
+		if (count == 0) {
+			if (cur_Path.empty()) {
+				cout << " < There is no path between the entered nodes in the current graph > " << endl; // вивести відповідне повідомлення
+				fprintf(file, " < There is no path between the entered nodes in the current graph > \n");
+				fclose(file); // закрити файл
+				return;
+			}
+			else printf(" flow / price / path \n");
+		}
+		else if (cur_Path.empty())break; // якщо шлях більше не існує, вийти із циклу
+
+		cur_flow = get_min_flow(Edge_List, cur_Path, meta_data.num_of_edges); // отримати пропускну здатність знайденого шляху
+		cur_price = get_path_price(Edge_List, cur_Path, meta_data.num_of_edges, cur_flow); // знайти вартість проходу по знайденому шляху
+		min_price += cur_price; // підрахувати загальну вартість потоків у мережі
+		max_flow += cur_flow; // підрахувати величину усіх потоків у мережі
+		get_residual_network(Edge_List, meta_data.num_of_edges, cur_Path, cur_flow); // отримати залишкову мережу
 
 		fprintf(file, "%d %d / ", cur_flow, cur_price); // записати знайдений потік 
 		printf("%d %d / ", cur_flow, cur_price);
 		write_answer(file, cur_Path); // записати знайдений шлях
+		count++;
+	} while (!cur_Path.empty());
 
-		cur_Path = Dijkstras_algorythm(Adjacency_Matrix, Edge_List, nodes, edges, start, finish, &cur_price, price); // пошук мінімального шляху між вершинами за допомогою алгоритма Дейкстри
-		if (cur_Path.empty())break; // якщо шлях більше не існує, вийти із циклу
-		cur_flow = get_min_flow(Edge_List, cur_Path, edges); // отримати пропускну здатність знайденого шляху
-		get_residual_network(Edge_List, edges, cur_Path, cur_flow);  // отримати залишкову мережу
-		cur_price = get_path_price(Edge_List, cur_Path, edges, cur_flow); // знайти вартість проходу по знайденому шляху
-		min_price += cur_price; // підрахувати загальну вартість потоків у мережі
-		max_flow += cur_flow; // підрахувати величину усіх потоків у мережі
+	fprintf(file, " < Minimal price from node \"%d\" to node \"%d\" is  %d > \n", meta_data.start_node, meta_data.finish_node, min_price); // записати значення максимального потоку
+	printf(" < Minimal price from node \"%d\" to node \"%d\" is  %d > \n", meta_data.start_node, meta_data.finish_node, min_price);
 
-	} while (!cur_Path.empty()); // поки існує шлях маж заданими вершинами
-
-	fprintf(file, " < Minimal price from node \"%d\" to node \"%d\" is  %d > \n", start, finish, min_price); // записати значення максимального потоку
-	printf(" < Minimal price from node \"%d\" to node \"%d\" is  %d > \n", start, finish, min_price);
-
-	Adjacency_Matrix = del_matrix(Adjacency_Matrix, nodes); // видалення матриці суміжності
 	fclose(file); // закрити файл
 }
